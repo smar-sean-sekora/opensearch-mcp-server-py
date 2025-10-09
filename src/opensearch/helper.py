@@ -16,7 +16,12 @@ def list_indices(args: ListIndicesArgs) -> json:
     from .client import initialize_client
 
     client = initialize_client(args)
-    response = client.cat.indices(format='json')
+    # Pass index parameter to OpenSearch if provided
+    # Supports comma-separated list and wildcards
+    if args.index:
+        response = client.cat.indices(index=args.index, format='json')
+    else:
+        response = client.cat.indices(format='json')
     return response
 
 

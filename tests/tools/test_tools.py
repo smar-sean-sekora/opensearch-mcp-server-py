@@ -33,6 +33,12 @@ class TestTools:
         )
         self.init_client_patcher.start()
 
+        # Reset the global index filter config to allow all indices (no filtering)
+        import tools.index_filter
+        tools.index_filter._index_filter_config = tools.index_filter.IndexFilterConfig(
+            allowed_index_patterns=[], denied_index_patterns=[]
+        )
+
         # Clear any existing imports to ensure fresh imports
         import sys
 

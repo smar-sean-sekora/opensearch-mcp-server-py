@@ -81,7 +81,15 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
                 {'type': 'text', 'text': f'Index information for {args.index}:\n{formatted_info}'}
             ]
 
-        # Otherwise, list all indices
+        # When no specific index is provided, use allowed index patterns if configured
+        from .index_filter import get_index_filter_config
+        filter_config = get_index_filter_config()
+        if filter_config.allowed_index_patterns:
+            # Set args.index to comma-separated list of allowed patterns
+            # This leverages OpenSearch's native pattern matching
+            args.index = ','.join(filter_config.allowed_index_patterns)
+
+        # List indices (filtered by allowed patterns if configured)
         indices = list_indices(args)
 
         # If include_detail is False, return only pure list of index names
