@@ -20,6 +20,7 @@ from .tool_params import (
     baseToolArgs,
 )
 from .utils import is_tool_compatible
+from .index_filter import validate_index_access
 from opensearch.helper import (
     get_allocation,
     get_cluster_state,
@@ -68,6 +69,10 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
     try:
         check_tool_compatibility('ListIndexTool', args)
 
+        # Validate index access if index parameter is provided
+        if args.index:
+            validate_index_access(args.index)
+
         # If index is provided, always return detailed information for that specific index
         if args.index:
             index_info = get_index(args)
@@ -99,6 +104,7 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
 async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
     try:
         check_tool_compatibility('IndexMappingTool', args)
+        validate_index_access(args.index)
         mapping = get_index_mapping(args)
         formatted_mapping = json.dumps(mapping, indent=2)
 
@@ -110,6 +116,7 @@ async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
 async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
     try:
         check_tool_compatibility('SearchIndexTool', args)
+        validate_index_access(args.index)
         result = search_index(args)
         formatted_result = json.dumps(result, indent=2)
 
@@ -126,6 +133,7 @@ async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
 async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
     try:
         check_tool_compatibility('GetShardsTool', args)
+        validate_index_access(args.index)
         result = get_shards(args)
 
         if isinstance(result, dict) and 'error' in result:
@@ -150,15 +158,17 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
 
 async def get_cluster_state_tool(args: GetClusterStateArgs) -> list[dict]:
     """Tool to get the current state of the cluster.
-    
+
     Args:
         args: GetClusterStateArgs containing optional metric and index filters
-        
+
     Returns:
         list[dict]: Cluster state information in MCP format
     """
     try:
         check_tool_compatibility('GetClusterStateTool', args)
+        if args.index:
+            validate_index_access(args.index)
         result = get_cluster_state(args)
         
         # Format the response for better readability
@@ -178,15 +188,17 @@ async def get_cluster_state_tool(args: GetClusterStateArgs) -> list[dict]:
 
 async def get_segments_tool(args: GetSegmentsArgs) -> list[dict]:
     """Tool to get information about Lucene segments in indices.
-    
+
     Args:
         args: GetSegmentsArgs containing optional index filter
-        
+
     Returns:
         list[dict]: Segment information in MCP format
     """
     try:
         check_tool_compatibility('GetSegmentsTool', args)
+        if args.index:
+            validate_index_access(args.index)
         result = get_segments(args)
         
         if isinstance(result, dict) and 'error' in result:
@@ -268,15 +280,16 @@ async def cat_nodes_tool(args: CatNodesArgs) -> list[dict]:
 
 async def get_index_info_tool(args: GetIndexInfoArgs) -> list[dict]:
     """Tool to get detailed information about an index including mappings, settings, and aliases.
-    
+
     Args:
         args: GetIndexInfoArgs containing the index name
-        
+
     Returns:
         list[dict]: Index information in MCP format
     """
     try:
         check_tool_compatibility('GetIndexInfoTool', args)
+        validate_index_access(args.index)
         result = get_index_info(args)
         
         # Format the response for better readability
@@ -292,15 +305,16 @@ async def get_index_info_tool(args: GetIndexInfoArgs) -> list[dict]:
 
 async def get_index_stats_tool(args: GetIndexStatsArgs) -> list[dict]:
     """Tool to get statistics about an index.
-    
+
     Args:
         args: GetIndexStatsArgs containing the index name and optional metric filter
-        
+
     Returns:
         list[dict]: Index statistics in MCP format
     """
     try:
         check_tool_compatibility('GetIndexStatsTool', args)
+        validate_index_access(args.index)
         result = get_index_stats(args)
         
         # Format the response for better readability

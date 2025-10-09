@@ -1,6 +1,33 @@
 version: "1.0"
 description: "Unified OpenSearch MCP Server Configuration"
 
+# ==============================================================================
+# Index Security Configuration (supported in both Single and Multi Mode)
+# ==============================================================================
+# Control which indexes can be accessed by the MCP server.
+# This provides an additional security layer on top of OpenSearch permissions.
+#
+# Priority: Denied patterns are checked first. If an index matches a denied pattern,
+# access is blocked regardless of allowed patterns.
+#
+# Pattern types supported:
+# - Wildcards: Use * and ? for simple patterns (e.g., "logs-*", "test-?-index")
+# - Regex: Prefix with "regex:" for complex patterns (e.g., "regex:^logs-\d{4}-\d{2}$")
+#
+# Note: If no patterns are configured, all indexes are accessible.
+#
+# index_security:
+#   allowed_index_patterns:
+#     - "logs-*"              # Allow all indexes starting with "logs-"
+#     - "metrics-*"           # Allow all indexes starting with "metrics-"
+#     - "app-production-*"    # Allow all production app indexes
+#     - "regex:^test-\d+$"    # Allow indexes like "test-123", "test-456"
+#   denied_index_patterns:
+#     - "sensitive-*"         # Block all indexes starting with "sensitive-"
+#     - ".security*"          # Block security-related indexes
+#     - "*-internal"          # Block all indexes ending with "-internal"
+#     - "regex:.*-dev-.*"     # Block indexes containing "-dev-"
+
 # Cluster configurations (used in Multi Mode)
 clusters:
   local-cluster:

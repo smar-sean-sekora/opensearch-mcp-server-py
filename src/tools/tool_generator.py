@@ -8,6 +8,7 @@ import ssl
 import os
 from .tool_params import baseToolArgs
 from .tools import TOOL_REGISTRY, check_tool_compatibility
+from .index_filter import validate_index_access
 from mcp.types import TextContent
 from pydantic import BaseModel, create_model
 from typing import Any, Dict, List
@@ -247,6 +248,11 @@ def generate_tool_from_group(base_name: str, endpoints: List[Dict]) -> Dict[str,
                     )
                 ]
             check_tool_compatibility(tool_name, args)
+
+            # Validate index access if index parameter is present
+            if 'index' in params_dict and params_dict['index']:
+                validate_index_access(params_dict['index'])
+
             # Process body and select endpoint
             body = process_body(params_dict.pop('body', None), tool_name)
             selected_endpoint = select_endpoint(endpoints, params_dict)

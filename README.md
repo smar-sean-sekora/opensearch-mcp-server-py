@@ -20,6 +20,7 @@
 - Built-in tools for common OpenSearch operations
 - Easy integration with Claude Desktop and LangChain
 - Secure authentication using basic auth or IAM roles
+- Index-level access control with pattern-based filtering
 
 ## Installing opensearch-mcp-server-py
 

@@ -11,6 +11,7 @@
 - [Running the Server](#running-the-server)
 - [Tool Filter](#tool-filter)
 - [Tool Customization](#tool-customization)
+- [Index Security](#index-security)
 - [LangChain Integration](#langchain-integration)
 
 ## Overview
@@ -419,6 +420,13 @@ python -m mcp_server_opensearch --mode multi
 | `OPENSEARCH_DISABLED_TOOLS_REGEX` | No | `''` | Comma-separated list of regex patterns for disabled tools |
 | `OPENSEARCH_SETTINGS_ALLOW_WRITE` | No | `"true"` | Enable/disable write operations (`"true"` or `"false"`) |
 
+### Index Security Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENSEARCH_ALLOWED_INDEX_PATTERNS` | No | `''` | Allowed index patterns (JSON array or comma-separated) |
+| `OPENSEARCH_DENIED_INDEX_PATTERNS` | No | `''` | Denied index patterns (JSON array or comma-separated) |
+
 *Required in single mode or when not using multi-mode config file
 
 ## Multi-Mode Cluster Configuration
@@ -567,6 +575,144 @@ Configuration file settings have higher priority than runtime parameters. If bot
 - Only existing tools can be customized; new tools cannot be created
 - Changes take effect immediately when the server starts
 - Invalid tool names or properties will throw an error
+
+## Index Security
+
+OpenSearch MCP server supports index-level access control to restrict which indexes can be accessed through the MCP server. This provides an additional security layer on top of OpenSearch's built-in security features.
+
+**Supported in Both Single and Multi Mode**
+
+### How It Works
+
+- **Allowed Patterns**: Define which indexes are accessible (whitelist approach)
+- **Denied Patterns**: Define which indexes are blocked (blacklist approach)
+- **Priority**: Denied patterns are checked first and take precedence over allowed patterns
+- **Default Behavior**: If no patterns are configured, all indexes are accessible
+
+### Pattern Types
+
+The index security feature supports two types of patterns:
+
+1. **Wildcard Patterns**: Use `*` and `?` for simple pattern matching
+   - `logs-*` - Matches all indexes starting with "logs-"
+   - `test-?-index` - Matches indexes like "test-1-index", "test-a-index"
+   - `*-production` - Matches all indexes ending with "-production"
+
+2. **Regex Patterns**: Prefix with `regex:` for complex patterns
+   - `regex:^logs-\d{4}-\d{2}$` - Matches "logs-2024-01", "logs-2023-12"
+   - `regex:.*-dev-.*` - Matches indexes containing "-dev-"
+
+### Configuration Methods
+
+#### 1. YAML Configuration File
+
+Add an `index_security` section to your configuration file:
+
+```yaml
+version: "1.0"
+description: "OpenSearch MCP Server Configuration"
+
+# Index security configuration
+index_security:
+  allowed_index_patterns:
+    - "logs-*"              # Allow all logs indexes
+    - "metrics-*"           # Allow all metrics indexes
+    - "app-production-*"    # Allow production app indexes
+    - "regex:^test-\d+$"    # Allow test-123, test-456, etc.
+  denied_index_patterns:
+    - "sensitive-*"         # Block sensitive data indexes
+    - ".security*"          # Block security system indexes
+    - "*-internal"          # Block internal indexes
+    - "regex:.*-dev-.*"     # Block development indexes
+```
+
+Start the server with the configuration file:
+
+```bash
+# Single Mode
+python -m mcp_server_opensearch --config config.yml
+
+# Multi Mode
+python -m mcp_server_opensearch --mode multi --config config.yml
+```
+
+#### 2. Environment Variables
+
+Configure index security using environment variables:
+
+```bash
+# JSON array format
+export OPENSEARCH_ALLOWED_INDEX_PATTERNS='["logs-*", "metrics-*"]'
+export OPENSEARCH_DENIED_INDEX_PATTERNS='["sensitive-*", ".security*"]'
+
+# Or comma-separated format
+export OPENSEARCH_ALLOWED_INDEX_PATTERNS="logs-*, metrics-*, app-*"
+export OPENSEARCH_DENIED_INDEX_PATTERNS="sensitive-*, .security*, *-internal"
+```
+
+### Configuration Priority
+
+YAML configuration file takes priority over environment variables. If both are provided, the YAML settings will be used.
+
+### Use Cases
+
+1. **Whitelist Approach** - Only allow specific index patterns:
+   ```yaml
+   index_security:
+     allowed_index_patterns:
+       - "logs-*"
+       - "metrics-*"
+   ```
+   Result: Only indexes matching "logs-\*" or "metrics-\*" are accessible.
+
+2. **Blacklist Approach** - Block specific index patterns:
+   ```yaml
+   index_security:
+     denied_index_patterns:
+       - "sensitive-*"
+       - ".security*"
+   ```
+   Result: All indexes except those matching denied patterns are accessible.
+
+3. **Combined Approach** - Allow specific patterns but deny others:
+   ```yaml
+   index_security:
+     allowed_index_patterns:
+       - "logs-*"
+     denied_index_patterns:
+       - "logs-sensitive-*"
+   ```
+   Result: Only logs indexes are accessible, except those containing "sensitive".
+
+### Important Notes
+
+- **Wildcard Expansion**: Index names containing wildcards (like `logs-*`) in tool calls bypass validation, as OpenSearch expands them at query time
+- **Comma-Separated Indexes**: When tools receive comma-separated index names, each is validated individually
+- **Error Handling**: If an index is denied, the tool will return an error message indicating access is blocked
+- **Scope**: Index filtering applies to all tools that accept an `index` parameter
+- **Performance**: Pattern matching is performed before OpenSearch queries, adding minimal overhead
+
+### Example: Production Use Case
+
+For a production environment where you want to restrict access to only production logs and metrics:
+
+```yaml
+index_security:
+  allowed_index_patterns:
+    - "logs-production-*"
+    - "metrics-production-*"
+    - "app-prod-*"
+  denied_index_patterns:
+    - "*-dev-*"
+    - "*-test-*"
+    - "*-staging-*"
+    - "temp-*"
+    - ".internal-*"
+```
+
+This configuration:
+- ✅ Allows: `logs-production-2024`, `metrics-production-cpu`, `app-prod-users`
+- ❌ Blocks: `logs-dev-2024`, `metrics-test-memory`, `temp-debug`, `.internal-cache`
 
 ## LangChain Integration
 

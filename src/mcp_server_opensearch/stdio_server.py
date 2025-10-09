@@ -10,6 +10,7 @@ from tools.tool_filter import get_tools
 from tools.tool_generator import generate_tools_from_openapi
 from tools.tools import TOOL_REGISTRY
 from tools.config import apply_custom_tool_config
+from tools.index_filter import load_index_filter_config
 
 
 # --- Server setup ---
@@ -29,6 +30,13 @@ async def serve(
     # Load clusters from YAML file
     if mode == 'multi':
         load_clusters_from_yaml(config_file_path)
+
+    # Load index filter configuration
+    index_filter = load_index_filter_config(config_file_path)
+    logging.info(
+        f'Index filter configured - Allowed patterns: {index_filter.allowed_index_patterns}, '
+        f'Denied patterns: {index_filter.denied_index_patterns}'
+    )
 
     # Call tool generator
     await generate_tools_from_openapi()
