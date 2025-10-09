@@ -102,6 +102,7 @@ uv sync
   - `tool_generator.py`: Dynamic tool schema generation
   - `config.py`: YAML configuration parsing for tool filters and customization
   - `utils.py`: Tool compatibility checking based on OpenSearch version
+  - `index_filter.py`: Index-level access control with pattern-based filtering
 
 ### Server Modes
 
@@ -119,6 +120,27 @@ uv sync
 ### Authentication Flow
 
 Priority order: No Auth → IAM Role → Basic Auth → AWS Credentials
+
+### Index Security
+
+The server supports index-level access control to restrict which indexes can be accessed:
+- **Allowed Patterns**: Whitelist approach using wildcards (`logs-*`) or regex (`regex:^logs-\d{4}$`)
+- **Denied Patterns**: Blacklist approach with same pattern types
+- **Priority**: Denied patterns checked first and take precedence over allowed patterns
+- **Configuration**: Via YAML `index_security` section or environment variables
+- **Validation**: Applied before OpenSearch queries in all tools with index parameters
+- **Wildcard Bypass**: Index names with wildcards in tool calls bypass validation (OpenSearch expands them)
+
+Example configuration:
+```yaml
+index_security:
+  allowed_index_patterns:
+    - "logs-*"
+    - "metrics-*"
+  denied_index_patterns:
+    - "sensitive-*"
+    - ".security*"
+```
 
 ### Tool Architecture
 
@@ -158,6 +180,9 @@ Tools in `tools/tools.py` orchestrate these helper functions and are registered 
    async def your_tool_function(args: YourToolArgs) -> list[dict]:
        try:
            check_tool_compatibility('YourToolName', args)
+           # Add index validation if tool accepts index parameter
+           if hasattr(args, 'index') and args.index:
+               validate_index_access(args.index)
            result = your_helper_function(args)
            return [{"type": "text", "text": json.dumps(result, indent=2)}]
        except Exception as e:
